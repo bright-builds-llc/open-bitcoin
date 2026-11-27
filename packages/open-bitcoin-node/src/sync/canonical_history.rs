@@ -120,6 +120,13 @@ impl DurableSyncRuntime {
         )
         .into_canonical_scope(selected);
         network.peer_manager_mut().seed_header_store(headers);
+        // Mainnet replay has already checked active bodies on both database opens.
+        // The generic peer body guard still refuses Mainnet admission.
+        let retain = if selected == CanonicalChain::Mainnet {
+            ManagedPeerNetwork::retain_replayed_candidate
+        } else {
+            ManagedPeerNetwork::retain_checked_candidate
+        };
         // Body linkage receipts require the real checked ancestors, independently
         // of header knowledge. Recheck those actual proved bytes in active order.
         for hash in active
@@ -139,9 +146,9 @@ impl DurableSyncRuntime {
                     .map_err(|_| invalid("canonical history active body context absent"))?
                     .current_time
             };
-            network.retain_checked_candidate(&ancestor, params, now)?;
+            retain(&mut network, &ancestor, params, now)?;
         }
-        network.retain_checked_candidate(&body, params, observed)?;
+        retain(&mut network, &body, params, observed)?;
         if network
             .maybe_body_eligibility(tip.block_hash)
             .is_none_or(|facts| {

@@ -4,7 +4,7 @@
 // - packages/bitcoin-knots/src/consensus/tx_verify.cpp
 
 use super::*;
-use open_bitcoin_consensus::chain_spec::NetworkRules;
+use open_bitcoin_consensus::chain_spec::{MAINNET_OFFLINE_PREFIX_MAX_HEIGHT, NetworkRules};
 use open_bitcoin_consensus::{
     CandidateHistory, CandidateRules, CanonicalChain, HistoryHeader, HistoryOrigin,
 };
@@ -169,6 +169,11 @@ impl<V: CoinsView> Chainstate<V> {
         {
             return Err(context_error("canonical-admission-batch-bound"));
         }
+        if rules.chain() == CanonicalChain::Mainnet && !disconnect.is_empty() {
+            return Err(context_error(
+                "mainnet-offline-prefix-requires-tip-extension",
+            ));
+        }
         let mut branch = self.active_chain.clone();
         for header in disconnect {
             let tip = branch.last().ok_or(ChainstateError::MissingTip)?;
@@ -196,6 +201,11 @@ impl<V: CoinsView> Chainstate<V> {
         let mut admitted = Vec::with_capacity(candidates.len());
         for (header, now) in candidates {
             let history = history_from_chain(rules, header, &branch, HEADER_HISTORY_WINDOW)?;
+            if rules.chain() == CanonicalChain::Mainnet
+                && history.height() > MAINNET_OFFLINE_PREFIX_MAX_HEIGHT
+            {
+                return Err(context_error("mainnet-offline-prefix-limit"));
+            }
             history
                 .check_header_rules(*now)
                 .map_err(|source| ChainstateError::BlockValidation { source })?;
@@ -230,7 +240,7 @@ impl<V: CoinsView> Chainstate<V> {
             .maybe_canonical_rules
             .ok_or_else(|| context_error("missing-canonical-root"))?;
         match rules.chain() {
-            CanonicalChain::Regtest => Ok(rules),
+            CanonicalChain::Mainnet | CanonicalChain::Regtest => Ok(rules),
             CanonicalChain::Signet => Err(context_error("signet-challenge-validation-unavailable")),
             _ => Err(context_error(
                 "canonical-checkpoint-prerequisites-unavailable",

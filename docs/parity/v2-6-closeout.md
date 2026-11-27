@@ -30,7 +30,7 @@ digest. [Qualification freshness](v2-6-knots-regtest-differential.md#qualificati
   [Bootstrap](v2-6-canonical-durable-bootstrap.md) · [Prune and reopen](v2-6-canonical-pruning.md).
 - **Historical validation.** Six Mainnet blocks have finite, seeded evidence
   with explicit ancestry, spent-output and activation prerequisites. The
-  current ordinary product route refuses unsupported descendants on Mainnet,
+  ordinary product route at the v2.6 tag refuses descendants on Mainnet,
   testnet3, and default Signet.
   [Candidate-history evidence](v2-6-candidate-history-validation.md#finite-mainnet-fixture-audit).
 

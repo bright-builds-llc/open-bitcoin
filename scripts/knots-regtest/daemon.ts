@@ -102,9 +102,9 @@ async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>, 
   throw new DOMException("Daemon did not become RPC-ready within the startup limit", "TimeoutError");
 }
 
-function tip(value: unknown, height: number, hash: string) {
+function tip(value: unknown, height: number, hash: string, chain: "regtest" | "main") {
   const info = object(value);
-  if (info.chain !== "regtest" || info.blocks !== height || info.bestblockhash !== hash) {
+  if (info.chain !== chain || info.blocks !== height || info.bestblockhash !== hash) {
     throw new Error(`Unexpected chain tip: ${JSON.stringify({
       network: info.chain, height: info.blocks, hash: info.bestblockhash,
     })}`);
@@ -131,15 +131,16 @@ async function gracefulExit(child: Bun.Subprocess) {
   }
 }
 
-export async function compareDaemon(
+export async function compareDaemon<T extends Record<string, unknown>>(
   name: DaemonName,
   executable: string,
   run: string,
   runtimeRoot: string,
   genesisHash: string,
-  exercise: (rpc: DaemonRpc) => Promise<Record<string, unknown>>,
+  exercise: (rpc: DaemonRpc) => Promise<T>,
   indexKnots = false,
   maybeStartupTip?: RegtestTip,
+  chain: "regtest" | "main" = "regtest",
 ) {
   // Keep both the home and the datadir fresh so no host configuration or chain can leak in.
   const home = join(runtimeRoot, name);
@@ -147,9 +148,9 @@ export async function compareDaemon(
   mkdirSync(datadir, { recursive: true, mode: 0o700 });
   const port = await localPort();
   const password = randomBytes(24).toString("hex");
-  const flags = ["-chain=regtest", "-server=1", `-rpcbind=${LOOPBACK}`,
+  const flags = [`-chain=${chain}`, "-server=1", `-rpcbind=${LOOPBACK}`,
     ...(name === "knots" ? KNOTS_FLAGS : []),
-    ...(name === "open-bitcoin" || indexKnots ? OPEN_BITCOIN_FLAGS : [])];
+    ...(name === "open-bitcoin" || indexKnots ? (chain === "main" ? ["-blockfilterindex=0"] : OPEN_BITCOIN_FLAGS) : [])];
   const log = join(run, `${name}-daemon.log`);
   const fd = openSync(log, "wx", 0o600);
   const signals = ["SIGINT", "SIGTERM"] as const;
@@ -171,7 +172,7 @@ export async function compareDaemon(
       const call = async (method: string, params?: unknown[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
       const expectedTip = maybeStartupTip ?? { height: 0, hash: genesisHash };
-      const initialTip = tip(await ready(child, rpc, deadline), expectedTip.height, expectedTip.hash);
+      const initialTip = tip(await ready(child, rpc, deadline), expectedTip.height, expectedTip.hash, chain);
       const network = object(await call("getnetworkinfo"));
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");
@@ -180,10 +181,10 @@ export async function compareDaemon(
         try {
           const submitted = await call("submitblock", [blockHex]);
           if (submitted !== null) throw new Error(`submitblock returned ${JSON.stringify(submitted)}`);
-          return tip(await call("getblockchaininfo"), height, hash);
+          return tip(await call("getblockchaininfo"), height, hash, chain);
         } catch (error) {
           const detail = error instanceof Error ? error.message : String(error);
-          throw new Error(`Regtest height ${height} (${hash}): ${detail}`, { cause: error });
+          throw new Error(`${chain === "main" ? "Mainnet" : "Regtest"} height ${height} (${hash}): ${detail}`, { cause: error });
         }
       };
       const outcome = await exercise({ call, submit, datadir });

@@ -145,7 +145,15 @@ pub(super) fn open_configured_history_runtime(
         || runtime.inbound.enabled
         || runtime.prune_mode != open_bitcoin_node::core::chainstate::PruneMode::Disabled
         || runtime.block_filter_index.is_explicit();
-    if chain != CanonicalChain::Regtest || !trigger {
+    let configured_history = match chain {
+        CanonicalChain::Regtest => trigger,
+        CanonicalChain::Mainnet => {
+            runtime.block_filter_index
+                == open_bitcoin_rpc::config::BasicFilterIndexSetting::Disabled
+        }
+        CanonicalChain::Testnet3 | CanonicalChain::Signet => false,
+    };
+    if !configured_history {
         return Ok(None);
     }
     let (context, sync_runtime) = ManagedRpcContext::from_canonical_history_runtime_config(runtime)

@@ -252,8 +252,9 @@ function checkFacts(text: (file: string) => string, fail: (file: string, rule: s
     || !body("ordinary_history").includes("false")
     || !body("actual_daemon_differential_qualified").includes("false")
     || !body("local_ordinary_implementation").includes("CanonicalChain::Regtest=>LocalOrdinaryImplementation::BoundedDefaultRegtest")
-    || !body("local_ordinary_implementation").includes("CanonicalChain::Mainnet|CanonicalChain::Testnet3|CanonicalChain::Signet=>{LocalOrdinaryImplementation::Unavailable}")) {
-    fail(SPEC, "scope", "bounded default-Regtest implementation must not promote generic ordinary qualification");
+    || !body("local_ordinary_implementation").includes("CanonicalChain::Mainnet=>LocalOrdinaryImplementation::BoundedMainnetPrefix")
+    || !body("local_ordinary_implementation").includes("CanonicalChain::Testnet3|CanonicalChain::Signet=>{LocalOrdinaryImplementation::Unavailable}")) {
+    fail(SPEC, "scope", "bounded local implementation must preserve generic ordinary refusal");
   }
 }
 
@@ -274,7 +275,7 @@ if (import.meta.main) {
       console.error("Phase164 current-source identity boundary failed:\n" + findings.map(row => `${row.file}: ${row.rule}: ${row.detail}`).join("\n"));
       process.exit(1);
     }
-    console.log(`Phase164: ${SOURCE_FILES.length} fixed Rust inputs; ${EDGES.length} reviewed source edges; identity-only ordinary refusal with bounded default-Regtest local implementation. No canonical qualification receipt generated.`);
+    console.log(`Phase164: ${SOURCE_FILES.length} fixed Rust inputs; ${EDGES.length} reviewed source edges; generic ordinary refusal with bounded local implementations. No canonical qualification receipt generated.`);
   } catch (error) {
     console.error(`Phase164 required input failure: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);

@@ -46,7 +46,7 @@ selects 100-block coinbase maturity for all four profiles. Regtest halves at
 150 blocks; the other selected defaults halve at 210,000. These facts alone do
 not enable ordinary history on another selector.
 
-| Selected profile | BIP34 | BIP66 | BIP65 | CSV/BIP113 | Segwit | Product ordinary route |
+| Selected profile | BIP34 | BIP66 | BIP65 | CSV/BIP113 | Segwit | Product ordinary route at v2.6 |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | Mainnet | 227,931 | 363,725 | 388,381 | 419,328 | 481,824 | Refused |
 | Testnet3 (`testnet` CLI) | 21,111 | 330,776 | 581,885 | 770,112 | 834,624 | Refused |
@@ -200,9 +200,9 @@ bun run scripts/command-timings.ts run --key phase167-docs-bazel-status -- bazel
 
 The offline status command is existing-only; an admitted Fjall open can have
 filesystem effects, while pre-admission incompatible-source refusal preserves
-the source within its finite checks. Networking remains default off. Mainnet,
-testnet3 and Signet ordinary configuration remain refused; default Signet also
-lacks challenge validation. The generic `require_ordinary_history()` gate
+the source within its finite checks. Networking remains default off. At v2.6, Mainnet, testnet3 and Signet ordinary
+configuration refused. The [bounded offline Mainnet route](mainnet-offline-prefix.md)
+is documented separately. Default Signet still lacks challenge validation. The generic `require_ordinary_history()` gate
 remains false for every selector. Whole-chain, public-default networking,
 unattended full sync, production-service and production-funds qualification
 remain deferred. The canonical RPC context carries `WalletState::Unavailable`.

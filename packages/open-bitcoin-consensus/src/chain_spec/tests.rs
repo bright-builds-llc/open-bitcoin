@@ -507,7 +507,7 @@ fn phase167_support_scope_separates_bounded_regtest_implementation_from_qualific
     ); 4] = [
         (
             CanonicalChain::Mainnet,
-            LocalOrdinaryImplementation::Unavailable,
+            LocalOrdinaryImplementation::BoundedMainnetPrefix,
             &[
                 MissingImplementationPrerequisite::HistoricalRules,
                 MissingImplementationPrerequisite::CheckpointContext,
@@ -543,7 +543,7 @@ fn phase167_support_scope_separates_bounded_regtest_implementation_from_qualific
         assert_eq!(scope.missing_implementation_prerequisites(), missing);
         assert_eq!(
             implementation.retained_body_reopen_bound(),
-            chain == CanonicalChain::Regtest
+            chain.supports_bounded_local_history()
         );
         assert_eq!(
             scope.evidence_class(),
@@ -588,10 +588,6 @@ fn phase167_support_scope_fixture_parameter_mutation_cannot_change_immutable_sel
 #[test]
 fn implementation_status_codes_follow_bounded_selector_facts() {
     // Arrange
-    let codes = [
-        LocalOrdinaryImplementation::Unavailable.code(),
-        LocalOrdinaryImplementation::BoundedDefaultRegtest.code(),
-    ];
     let prerequisites = [
         MissingImplementationPrerequisite::HistoricalRules.code(),
         MissingImplementationPrerequisite::CheckpointContext.code(),
@@ -599,7 +595,6 @@ fn implementation_status_codes_follow_bounded_selector_facts() {
     ];
 
     // Act / Assert
-    assert_eq!(codes, ["unavailable", "bounded_default_regtest"]);
     assert_eq!(
         prerequisites,
         [
@@ -609,7 +604,7 @@ fn implementation_status_codes_follow_bounded_selector_facts() {
         ]
     );
     for (chain, code) in [
-        (CanonicalChain::Mainnet, "unavailable"),
+        (CanonicalChain::Mainnet, "bounded_mainnet_prefix"),
         (CanonicalChain::Testnet3, "unavailable"),
         (CanonicalChain::Signet, "unavailable"),
         (CanonicalChain::Regtest, "bounded_default_regtest"),

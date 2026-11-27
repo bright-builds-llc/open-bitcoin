@@ -29,6 +29,8 @@ attribution.
 
 The [v2.6 closeout](v2-6-closeout.md) records the verified commit, passing CI,
 and supported scope.
+The [bounded offline Mainnet prefix](mainnet-offline-prefix.md) defines the
+separate genesis-to-height-200 comparison and durable reopen evidence.
 
 The [qualification freshness check](v2-6-knots-regtest-differential.md#qualification-freshness)
 verifies the shared input digest for all seven actual Regtest receipts in

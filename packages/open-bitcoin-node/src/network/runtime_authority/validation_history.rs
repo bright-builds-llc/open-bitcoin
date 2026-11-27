@@ -167,7 +167,7 @@ fn startup_error(error: impl fmt::Display) -> SyncRuntimeError {
 }
 
 impl DurableSyncRuntime {
-    /// Open one proved configured owner and its optional Regtest submission command.
+    /// Open one proved configured owner and its optional bounded local submission command.
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use open_bitcoin_node::{DurableSyncRuntime, SyncRuntimeConfig};
@@ -191,32 +191,17 @@ impl DurableSyncRuntime {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
             Err(error) => return Err(startup_error(error)),
         };
-        if empty || chain != CanonicalChain::Regtest {
+        let runtime = if empty || !chain.supports_bounded_local_history() {
             let opened =
                 FjallNodeStore::open_canonical_genesis(path, chain).map_err(startup_error)?;
-            return Self::open_genesis_submission_configured(opened, config, mode);
-        }
-        let runtime = Self::reopen_canonical_history_configured(path, config, mode)?;
-        let network = runtime.network_handle();
-        let (maybe_params, incarnation) = network.read(|network| {
-            (
-                network.maybe_header_consensus_params,
-                network.authority_epoch(),
-            )
-        })?;
-        let command = CanonicalSubmissionCommand {
-            network,
-            store: runtime.store().clone(),
-            params: maybe_params.ok_or_else(|| startup_error("missing held parameters"))?,
-            chain,
-            incarnation,
-            operation: Mutex::new(()),
+            Self::open_canonical_genesis_configured(opened, config, mode)?
+        } else {
+            Self::reopen_canonical_history_configured(path, config, mode)?
         };
-        command
-            .network
-            .read(|network| command.check_owner(network))?
-            .map_err(startup_error)?;
-        Ok((runtime, Some(command)))
+        if !chain.supports_bounded_local_history() {
+            return Ok((runtime, None));
+        }
+        Self::pair_submission(runtime, chain)
     }
 
     /// Consume the genuine genesis seal directly without reopening its held lease.
@@ -245,6 +230,13 @@ impl DurableSyncRuntime {
         if chain != CanonicalChain::Regtest {
             return Ok((runtime, None));
         }
+        Self::pair_submission(runtime, chain)
+    }
+
+    fn pair_submission(
+        runtime: Self,
+        chain: CanonicalChain,
+    ) -> Result<(Self, Option<CanonicalSubmissionCommand>), SyncRuntimeError> {
         let network = runtime.network_handle();
         let (maybe_params, incarnation) = network.read(|network| {
             (
@@ -395,7 +387,7 @@ impl CanonicalSubmissionCommand {
             .map_err(operational("live origin"))?;
         core.bind_live_work_source(self.params)
             .map_err(operational("selected parameters"))?;
-        if self.chain != CanonicalChain::Regtest
+        if !self.chain.supports_bounded_local_history()
             || network.authority_epoch() != self.incarnation
             || network.maybe_canonical_chain() != Some(self.chain)
             || core.maybe_canonical_chain() != Some(self.chain)

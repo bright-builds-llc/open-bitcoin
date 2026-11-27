@@ -35,6 +35,24 @@ impl CanonicalSubmissionCommand {
         if self.accepted_identity(network, &block)? {
             return Ok(CanonicalSubmissionOutcome::Duplicate(hash));
         }
+        if self.chain == CanonicalChain::Mainnet {
+            use open_bitcoin_core::consensus::chain_spec::MAINNET_OFFLINE_PREFIX_MAX_HEIGHT;
+            let tip = network
+                .chainstate()
+                .chainstate()
+                .tip()
+                .ok_or_else(|| CanonicalSubmissionError::support("accepted tip unavailable"))?;
+            if tip.height >= MAINNET_OFFLINE_PREFIX_MAX_HEIGHT {
+                return Ok(CanonicalSubmissionOutcome::Rejected(
+                    "mainnet-offline-prefix-limit".to_owned(),
+                ));
+            }
+            if tip.block_hash != block.header.previous_block_hash {
+                return Ok(CanonicalSubmissionOutcome::Rejected(
+                    "mainnet-offline-prefix-requires-tip-extension".to_owned(),
+                ));
+            }
+        }
         self.check_retained_capacity(network, hash)?;
         if network
             .peer_manager

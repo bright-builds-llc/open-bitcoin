@@ -10,6 +10,8 @@ const INPUT_SCOPE = [
   "scripts/command-timings.ts", "scripts/command-timing-lock.ts", "scripts/process-liveness.ts",
   "scripts/phase167-historical-corpus.ts", "scripts/phase167-regtest-serialization.ts",
   "docs/parity/fixtures/phase167-regtest-expectations.json",
+  "scripts/run-knots-mainnet-prefix.ts", "scripts/mainnet-prefix.ts", "scripts/check-mainnet-prefix.ts",
+  "docs/parity/fixtures/mainnet-prefix-200.hex", "docs/parity/fixtures/mainnet-block-201.hex",
 ] as const;
 const MAX_FILE_BYTES = 128 * 1024 * 1024;
 

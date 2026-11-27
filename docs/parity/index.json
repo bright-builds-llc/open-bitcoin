@@ -1589,6 +1589,31 @@
         "known_gaps": ["Receipt freshness and invalidation across source changes belong to CPAR-02."]
       },
       {
+        "id": "mainnet-offline-prefix",
+        "title": "Bounded Offline Mainnet Genesis-to-200 Differential",
+        "status": "planned",
+        "requirements": ["MAINNET-PREFIX-01"],
+        "evidence": [],
+        "evidence_classes": [],
+        "rationale": "Compare ordinary local Mainnet validation from genesis through height 200, exact active chainwork and the final UTXO set, with Open Bitcoin restart and a height-201 refusal.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/pow.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+          ],
+          "tests": []
+        },
+        "intentional_differences": [
+          "Open Bitcoin's offline Mainnet path checks direct active-tip extensions only and refuses beyond height 200."
+        ],
+        "known_gaps": [
+          "No Mainnet reorg, retarget, whole-chain, public-default, pruning, production, or wallet qualification."
+        ],
+        "suspected_unknowns": []
+      },
+      {
         "id": "v2-6-cpar-02",
         "title": "Offline verification and qualification invalidation",
         "status": "done",

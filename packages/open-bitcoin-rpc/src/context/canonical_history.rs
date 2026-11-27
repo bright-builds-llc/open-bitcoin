@@ -45,7 +45,16 @@ impl ManagedRpcContext<FjallChainstateStore, FjallCoinsView> {
     pub fn from_canonical_history_runtime_config(
         config: &RuntimeConfig,
     ) -> Result<(Self, DurableSyncRuntime), CanonicalContextError> {
+        use open_bitcoin_node::core::{chainstate::PruneMode, consensus::CanonicalChain};
         let chain = preflight(config)?;
+        if chain == CanonicalChain::Mainnet
+            && (config.block_filter_index != BasicFilterIndexSetting::Disabled
+                || config.prune_mode != PruneMode::Disabled
+                || config.peer_block_filters
+                || !config.rpc_server.bind_address.ip().is_loopback())
+        {
+            return Err(CanonicalContextError::InvalidGenesisConfiguration);
+        }
         let Some(directory) = config.maybe_data_dir.as_ref() else {
             return Err(CanonicalContextError::InvalidGenesisConfiguration);
         };

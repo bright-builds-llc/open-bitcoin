@@ -72,9 +72,9 @@ Phase 167 bounded default-Regtest private canonical submission is supported by l
 
 Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence.
 
-Mainnet, testnet3 and Signet ordinary configuration remain refused.
+The following limits describe the Phase 167 checkpoint.
 
-The following limits describe the Phase 167 evidence.
+Mainnet, testnet3 and Signet ordinary configuration remain refused.
 
 Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred.
 
@@ -87,6 +87,12 @@ exact historical case identities and finite source limits. Use only a disposable
 already proved and closed datadir for operator review. Networking stays off by
 default; no unattended acquisition or wallet authority follows from the
 local route.
+
+## Bounded offline Mainnet replay
+
+The [bounded offline Mainnet route](./docs/parity/mainnet-offline-prefix.md)
+covers direct tip extensions from genesis through height 200 via loopback
+RPC. The generic peer activation gate remains closed.
 
 ## Current v2.6 pinned Knots Regtest runner
 

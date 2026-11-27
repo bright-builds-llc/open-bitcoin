@@ -123,6 +123,11 @@ pub(super) fn validate_history_records(
         }
         validate_status(records, position)?;
     }
+    if selected == CanonicalChain::Mainnet
+        && records.bodies.keys().any(|hash| !active.contains(hash))
+    {
+        return Err(Refusal::UnsupportedHistory);
+    }
     let (earned_undo, earned_filters) =
         replay_graph(records, &stored, &headers, &mut replay, &genesis, &active)?;
     let mut snapshot = replay

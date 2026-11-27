@@ -109,3 +109,75 @@ fn phase167_daemon_old_genesis_signature_and_activation_refusal_remain_exact() {
     );
     assert!(!source.0.exists());
 }
+
+#[test]
+fn mainnet_prefix_reopens_an_accepted_tip() -> Result<(), Box<dyn std::error::Error>> {
+    // Arrange
+    let source = Source::new();
+    let mut config = configured(&source, BasicFilterIndexSetting::Disabled);
+    config.chain = AddressNetwork::Mainnet;
+    config.sync.runtime.network = SyncNetwork::Mainnet;
+    let mut blocks =
+        include_str!("../../../../../docs/parity/fixtures/mainnet-prefix-200.hex").lines();
+    let first = blocks.next().ok_or("height one fixture")?;
+    let second = blocks.next().ok_or("height two fixture")?;
+    let call = |context: &mut _, method, params| {
+        let request = normalize_method_call(method, RequestParameters::Positional(params))
+            .map_err(|error| format!("{error:?}"))?;
+        dispatch(context, request).map_err(|error| format!("{error:?}"))
+    };
+    let status = |context: &mut _| call(context, "getblockchaininfo", vec![]);
+    let submit =
+        |context: &mut _, block: &str| call(context, "submitblock", vec![serde_json::json!(block)]);
+    let Some(OpenedAuthoritativeRuntime::Durable(mut owner)) =
+        open_configured_history_runtime(&config)?
+    else {
+        return Err("expected configured durable Mainnet owner".into());
+    };
+    let mut context = owner
+        .maybe_prebuilt_context
+        .take()
+        .ok_or("expected paired context")?;
+
+    // Act
+    let before = status(&mut context)?;
+    assert_eq!(
+        submit(&mut context, second)?,
+        "mainnet-offline-prefix-requires-tip-extension"
+    );
+    assert_eq!(status(&mut context)?, before);
+    assert_eq!(submit(&mut context, first)?, serde_json::Value::Null);
+    let accepted = status(&mut context)?;
+    drop(context);
+    drop(owner);
+    let (mut context, _reopened) =
+        ManagedRpcContext::from_canonical_history_runtime_config(&config)?;
+
+    // Assert
+    assert_eq!(accepted["blocks"], 1);
+    assert_eq!(
+        accepted["bestblockhash"],
+        "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"
+    );
+    assert_eq!(status(&mut context)?, accepted);
+    Ok(())
+}
+
+#[test]
+fn mainnet_prefix_refuses_non_loopback_rpc_before_creating_storage()
+-> Result<(), Box<dyn std::error::Error>> {
+    // Arrange
+    let source = Source::new();
+    let mut config = configured(&source, BasicFilterIndexSetting::Disabled);
+    config.chain = AddressNetwork::Mainnet;
+    config.sync.runtime.network = SyncNetwork::Mainnet;
+    config.rpc_server.bind_address = "0.0.0.0:8332".parse()?;
+
+    // Act
+    let result = open_configured_history_runtime(&config);
+
+    // Assert
+    assert!(result.is_err());
+    assert!(!source.0.exists());
+    Ok(())
+}

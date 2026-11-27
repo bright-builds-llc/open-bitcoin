@@ -116,7 +116,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             ));
         }
         let mut headers = HeaderStore::from_canonical_genesis(proof)?;
-        if proof.chain() == CanonicalChain::Regtest {
+        if proof.chain().supports_bounded_local_history() {
             // Header lineage alone has no body seal. This adapter holds the full proved root.
             headers.check_body_eligibility(
                 proof.block(),

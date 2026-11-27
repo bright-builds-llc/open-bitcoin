@@ -2080,3 +2080,12 @@ and CREC-01 through CREC-02. Their recorded Open Bitcoin build commit and
 shared input digest match the launch binding. The offline gate checks
 freshness, observed outcomes and the bounded claim scope. Full pre-push and
 exact-head CI attest delivery.
+
+## task-mainnet-prefix-01 | 2026-11-27 | Compare offline Mainnet from genesis through height 200
+
+- [x] Collect and bind a contiguous raw Mainnet block corpus and a separate height-201 boundary input.
+- [x] Verify proof-based local admission, out-of-order and non-loopback refusal, and durable reopen at height one.
+- [ ] Verify the height-201 refusal during the full comparison.
+- [ ] Run both pinned daemons and record the agreed tip, chainwork and UTXOs after Open Bitcoin restarts.
+- [ ] Renew the affected Regtest receipts and verify the offline receipt gates.
+- [ ] Commit, push to main through the full repo verifier, and watch CI.

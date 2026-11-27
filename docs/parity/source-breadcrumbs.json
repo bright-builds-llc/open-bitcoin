@@ -980,7 +980,8 @@
     {
       "label": "cdif-04-closed-regtest-state",
       "files": [
-        "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs"
+        "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs",
+        "packages/open-bitcoin-rpc/tests/mainnet_prefix_closed_state.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/rpc/blockchain.cpp",

@@ -7,6 +7,7 @@ import { loggedCommand, OBSERVER_TIMEOUT_MS } from "./process.ts";
 import { readRegtestHistory, type RegtestTip } from "./regtest-history.ts";
 
 export const CLOSED_STATE_OBSERVER = "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs";
+export const MAINNET_STATE_OBSERVER = "packages/open-bitcoin-rpc/tests/mainnet_prefix_closed_state.rs";
 export const SPEND_STATE_OBSERVER = "packages/open-bitcoin-rpc/tests/crec02_closed_state.rs";
 const STATE_FIXTURE = "docs/parity/fixtures/phase167-regtest-expectations.json";
 const COIN_FIELDS = ["txid", "vout", "value", "coinbase", "height", "scriptPubKey"];
@@ -151,15 +152,17 @@ export async function observeClosedState(root: string, datadir: string, run: str
 
 export async function observeClosedCoins(
   root: string, datadir: string, run: string, expectedTip: RegtestTip, observerSha256: string,
-  observer: "cdif04" | "crec02",
+  observer: "cdif04" | "crec02" | "mainnet_prefix",
 ) {
-  const source = observer === "cdif04" ? CLOSED_STATE_OBSERVER : SPEND_STATE_OBSERVER;
+  const sources = { cdif04: CLOSED_STATE_OBSERVER, crec02: SPEND_STATE_OBSERVER, mainnet_prefix: MAINNET_STATE_OBSERVER };
+  const source = sources[observer];
+  const entry = observer === "mainnet_prefix" ? "observe_closed_mainnet_state" : "observe_closed_regtest_state";
   const flag = `OPEN_BITCOIN_${observer.toUpperCase()}`;
   const target = join(run, "open-bitcoin-closed-utxos.json");
   const log = join(run, "open-bitcoin-closed-state.log");
   const command = [process.execPath, "run", "scripts/command-timings.ts", "run", "--key", `${observer}-closed-state`, "--",
     "cargo", "test", "--locked", "--manifest-path", "packages/Cargo.toml", "-p", "open-bitcoin-rpc",
-    "--test", `${observer}_closed_state`, "observe_closed_regtest_state", "--", "--ignored", "--exact"];
+    "--test", `${observer}_closed_state`, entry, "--", "--ignored", "--exact"];
   await loggedCommand(root, command, log, {
     ...process.env, [`${flag}_DATADIR`]: datadir, [`${flag}_OUTPUT`]: target,
   }, OBSERVER_TIMEOUT_MS);

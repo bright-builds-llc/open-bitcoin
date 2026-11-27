@@ -13,6 +13,9 @@ mod rules;
 pub use bootstrap::CanonicalGenesisProof;
 pub use rules::{NetworkRules, ScriptFlagException};
 
+/// Highest descendant supported by the offline Mainnet prefix route.
+pub const MAINNET_OFFLINE_PREFIX_MAX_HEIGHT: u32 = 200;
+
 /// The four pinned profiles already exposed by Open Bitcoin's selectors.
 /// Signet denotes the default challenge only; custom Signets are outside this contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +30,11 @@ impl CanonicalChain {
     /// Select immutable identity and validation-support facts.
     pub const fn spec(self) -> ChainSpec {
         ChainSpec { chain: self }
+    }
+
+    /// Whether this profile has a bounded local admission and reopen implementation.
+    pub const fn supports_bounded_local_history(self) -> bool {
+        matches!(self, Self::Mainnet | Self::Regtest)
     }
 
     /// Canonical identity spelling; operator adapters retain their existing `testnet` selector.
@@ -123,12 +131,16 @@ pub enum ValidationEvidenceClass {
 pub enum LocalOrdinaryImplementation {
     Unavailable,
     BoundedDefaultRegtest,
+    BoundedMainnetPrefix,
 }
 
 impl LocalOrdinaryImplementation {
-    /// The retained-body replay and safe reopen bound exists only for default Regtest.
+    /// A finite retained-body replay and safe reopen implementation is available.
     pub const fn retained_body_reopen_bound(self) -> bool {
-        matches!(self, Self::BoundedDefaultRegtest)
+        matches!(
+            self,
+            Self::BoundedDefaultRegtest | Self::BoundedMainnetPrefix
+        )
     }
 
     /// Stable status spelling that does not imply network activation.
@@ -136,6 +148,7 @@ impl LocalOrdinaryImplementation {
         match self {
             Self::Unavailable => "unavailable",
             Self::BoundedDefaultRegtest => "bounded_default_regtest",
+            Self::BoundedMainnetPrefix => "bounded_mainnet_prefix",
         }
     }
 }
@@ -233,7 +246,8 @@ impl ValidationScope {
     pub const fn local_ordinary_implementation(&self) -> LocalOrdinaryImplementation {
         match self.chain {
             CanonicalChain::Regtest => LocalOrdinaryImplementation::BoundedDefaultRegtest,
-            CanonicalChain::Mainnet | CanonicalChain::Testnet3 | CanonicalChain::Signet => {
+            CanonicalChain::Mainnet => LocalOrdinaryImplementation::BoundedMainnetPrefix,
+            CanonicalChain::Testnet3 | CanonicalChain::Signet => {
                 LocalOrdinaryImplementation::Unavailable
             }
         }

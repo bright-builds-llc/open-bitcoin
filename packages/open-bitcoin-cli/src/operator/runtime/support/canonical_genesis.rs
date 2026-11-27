@@ -3,7 +3,7 @@
 
 use super::*;
 
-/// Observe only a separately proved genesis or complete default-Regtest history.
+/// Observe separately proved genesis or complete bounded history.
 pub(super) fn observe_canonical_status(
     data_dir: &Path,
     selected_chain: CanonicalChain,
@@ -42,7 +42,7 @@ pub(super) fn observe_canonical_status(
                 .map_err(|_| OperatorRuntimeError::CanonicalObservationUnavailable)?,
                 "proved_genesis",
             ),
-            Err(_) if selected_chain == CanonicalChain::Regtest => {
+            Err(_) if selected_chain.supports_bounded_local_history() => {
                 // A failed genesis proof grants no authority. History has its own
                 // complete copied/original replay proof before opening the owner.
                 let opened =

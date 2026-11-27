@@ -4,7 +4,9 @@
 // - packages/bitcoin-knots/src/pow.cpp
 
 use super::*;
-use open_bitcoin_consensus::chain_spec::{CanonicalChain, CanonicalGenesisProof};
+use open_bitcoin_consensus::chain_spec::{
+    CanonicalChain, CanonicalGenesisProof, MAINNET_OFFLINE_PREFIX_MAX_HEIGHT,
+};
 use open_bitcoin_consensus::{
     BlockValidationContext, CandidateHistory, HistoryHeader, chain_proof::ProofWork,
 };
@@ -239,9 +241,8 @@ impl HeaderStore {
             .maybe_canonical_history
             .as_ref()
             .ok_or_else(|| invalid_header("missing-canonical-root"))?;
-        // Additional checkpoint prerequisites and Signet body challenge remain unimplemented.
         match lineage.chain {
-            CanonicalChain::Regtest => {}
+            CanonicalChain::Mainnet | CanonicalChain::Regtest => {}
             CanonicalChain::Signet => {
                 return Err(invalid_header("signet-challenge-validation-unavailable").into());
             }
@@ -258,14 +259,18 @@ impl HeaderStore {
                 legacy: invalid_header("unproved-canonical-header-parent"),
             });
         }
-        let parent_work = self
+        let parent = self
             .entries
             .get(&hash)
-            .ok_or(NetworkError::MissingHeaderAncestor(hash))?
-            .chain_work;
+            .ok_or(NetworkError::MissingHeaderAncestor(hash))?;
+        if lineage.chain == CanonicalChain::Mainnet
+            && parent.height >= MAINNET_OFFLINE_PREFIX_MAX_HEIGHT
+        {
+            return Err(invalid_header("mainnet-offline-prefix-limit").into());
+        }
+        let parent_work = parent.chain_work;
         let mut rows = Vec::new();
-        // Parent MTP and the parent's 144-lookback MTP need at most155 rows.
-        // Regtest's interval144 and timely recovery are contained in that suffix.
+        // A 155-header suffix covers the retained Regtest lookbacks.
         for _ in 0..155 {
             if !lineage.admitted.contains_key(&hash) {
                 return Err(invalid_header("unproved-canonical-header-parent").into());

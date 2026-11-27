@@ -511,10 +511,10 @@ fn phase167_cli_genesis_four_selectors_retain_existing_status_route() {
         );
         assert_eq!(
             value["support"]["local_ordinary_implementation"],
-            if chain == CanonicalChain::Regtest {
-                "bounded_default_regtest"
-            } else {
-                "unavailable"
+            match chain {
+                CanonicalChain::Regtest => "bounded_default_regtest",
+                CanonicalChain::Mainnet => "bounded_mainnet_prefix",
+                CanonicalChain::Testnet3 | CanonicalChain::Signet => "unavailable",
             }
         );
         assert_eq!(

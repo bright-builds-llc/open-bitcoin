@@ -51,6 +51,16 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         current_time: i64,
     ) -> ManagedResult<()> {
         self.guard_body(block)?;
+        self.retain_replayed_candidate(block, params, current_time)
+    }
+
+    /// Restore eligibility from a body already checked by complete store replay.
+    pub(crate) fn retain_replayed_candidate(
+        &mut self,
+        block: &Block,
+        params: ConsensusParams,
+        current_time: i64,
+    ) -> ManagedResult<()> {
         if block.header.previous_block_hash != BlockHash::default()
             && self
                 .peer_manager
